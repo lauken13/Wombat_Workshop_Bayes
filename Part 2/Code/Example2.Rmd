@@ -1,0 +1,139 @@
+---
+title: "Part 2"
+author: "Lauren Kennedy"
+date: '2023-01-15'
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+# A different datast
+
+Now I will simulate a slightly more complicated dataset. I create a normal distributed predictor variable $x$, and simulate an outcome $y \sim N(5 + 2x,2)$. This would be simulated data for a simple linear regression. However, I will then take the exponent of y to create a skewed variable. Ideally we would take a log of this before modelling, but initially we will not to create model misfit. 
+
+```{r}
+library(tidyverse)
+library(brms)
+set.seed(37472)
+df_ex2 <- data.frame(x  = rnorm(200,0,1))%>%
+  mutate(y = rnorm(200,5+2*x,2),
+         y_exp = exp(y))
+```
+
+First plot to check the relationship. 
+
+```{r}
+library(ggplot2)
+
+ggplot(df_ex2, aes(x = x, y = y))+
+  geom_point()
+
+ggplot(df_ex2, aes(x = x, y = y_exp))+
+  geom_point()
+
+ggplot(df_ex2, aes(x = y))+
+    geom_histogram()
+
+```
+
+# Fit a model
+
+Fit a model as a linear regression
+
+```{r}
+mod1_ex2 <- brm(y_exp~x, data = df_ex2, backend = "cmdstanr", cores = 4)
+```
+No warnings, but lets check the model summary
+
+```{r}
+summary(mod1_ex2)
+
+```
+
+
+#Launch shiny stan
+
+```{r, eval = FALSE}
+library(shinystan)
+launch_shinystan(mod1_ex2)
+```
+# Posterior Predictive check
+
+The mechanics of this is very similar to the prior predictive check, but here we wish to see whether our model predicts values similar to what we observed. We have already fit the model, so we will go make a prediction of the $y$, denoted $y_{rep}$ in a lot of the software, using posterior_predict.
+
+```{r}
+yrep1 <- posterior_predict(mod1_ex2)
+```
+
+
+```{r}
+y <- df_ex2$y_exp
+yrep1 <- yrep1[1:500,]
+
+```
+
+We can see here that our posterior predicted values are considerably different to the observed, both in shape and also spread. 
+```{r}
+library(bayesplot)
+plot_predictive1 <- ppc_dens_overlay(y, yrep1) 
+
+plot_predictive1 +xlim(c(-3000,3000))
+
+```
+
+We can also replace this with a test statistic. Here I will use whether the value was less than zero or not. 
+
+```{r}
+prop_lessthanzero <- function(x) mean(x < 0)
+prop_lessthanzero(y) # check proportion of zeros in y
+
+```
+This highlights the problem very clearly!
+
+```{r}
+ppc_stat(y, yrep1, stat = "prop_lessthanzero", binwidth = 0.005)
+```
+I also like to sometimes compare a few iterations of the yreps with y as a scatter plot. There's no bayesplot version that I am aware of, but it's fairly easy to code
+
+```{r}
+df_pp1 <- data.frame(y = y, yrep = yrep1[1,])
+
+ggplot(df_pp1, aes(x = y, y = yrep))+
+  geom_point()
+
+```
+Let's refit the model now but log transform the outcome. 
+
+
+```{r}
+mod2_ex2 <- brm(log(y_exp)~x, data = df_ex2, backend = "cmdstanr", cores = 4)
+```
+
+```{r}
+summary(mod2_ex2)
+
+```
+Posterior predict and create plots
+
+```{r}
+yrep2 <- posterior_predict(mod2_ex2, ndraw = 500)
+y2 = log(y)
+```
+
+```{r}
+plot_predictive2 <- ppc_dens_overlay(y2, yrep2) 
+
+plot_predictive2
+
+ppc_stat(y2, yrep2, stat = "prop_lessthanzero", binwidth = 0.005)
+
+df_pp2 <- data.frame(y = y2, yrep = yrep2[1,])
+
+ggplot(df_pp2, aes(x = y, y = yrep))+
+  geom_point()
+
+
+```
+

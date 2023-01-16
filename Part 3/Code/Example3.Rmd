@@ -1,0 +1,92 @@
+---
+title: "Part 3"
+author: "Lauren Kennedy"
+date: '2023-01-15'
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+# Real data
+
+```{r}
+library(tidyverse)
+library(brms)
+library(lmeresampler)
+
+data("jsp728")
+
+df <- jsp728 %>%
+  mutate(student_id = 1:n())%>%
+  select(gender, class, school, normAge11, normAge8, student_id)%>%
+  pivot_longer(cols = c(normAge11, normAge8),
+               names_to = "time")
+
+df_t1 <- df %>%
+  filter(time == "normAge8")
+```
+
+
+Fit a multilevel model with a random effect for school and a fixed effect for class and gender
+
+```{r}
+ex3_model1 <- brm(value ~ gender + class + (1|school), data = df_t1, backend = "cmdstanr", cores = 4)
+
+summary(ex3_model1)
+```
+
+
+Obtain fixed and random parameter estimates:
+
+```{r}
+fixef(ex3_model1)
+ranef(ex3_model1)
+```
+
+Fit a fixed effects model for comparison
+
+```{r}
+ex3_model2 <- brm(value ~ gender + class + school, data = df_t1, backend = "cmdstanr", cores = 4)
+
+fixef(ex3_model2)
+```
+
+
+Compare the median predicted estimate for each school in each model.
+
+```{r}
+ex3_pred1 <- data.frame(t(posterior_predict(ex3_model1)), school = df_t1$school, model = "random") 
+
+ex3_pred2 <- data.frame(t(posterior_predict(ex3_model2)), school = df_t1$school, model = "fixed") 
+
+combined_data <- rbind(ex3_pred1,ex3_pred2)
+
+combined_data %>%
+  pivot_longer(-c('school','model'),
+               names_to = "posterior_id",
+               values_to = "posterior_preds") %>%
+  group_by(school,model)%>%
+  summarise(y_med = median(posterior_preds), y_min = quantile(posterior_preds,.1), y_max = quantile(posterior_preds,.9))%>%
+  ggplot(., aes(x = school,y=y_med, ymin = y_min, ymax = y_max, colour = model))+
+  geom_point(position = position_dodge(width = .5)) +
+  geom_errorbar(position = position_dodge(width = .5),width = 0)+
+  theme_bw()+
+  ggthemes::scale_color_colorblind()+
+  coord_flip()
+```
+
+
+Fit students nested within schools
+
+
+```{r}
+ex3_model2 <- brm(value ~ gender + class + (1|school/student_id), data = df, backend = "cmdstanr", cores = 4)
+```
+# Exercises:
+
+- Practice understanding the priors in these models using a prior predictive check
+- Explore the suitability of the model using a posterior predictive check
+- Set a very tight prior for the variance of the varying effect: do the estimates change for each school?
+- Explore the data: do the number of observations in each school impact the amount of pooling?

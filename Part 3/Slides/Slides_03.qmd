@@ -1,0 +1,61 @@
+---
+title: "Part 3: Multilevel models and exploring analysis"
+author: "Lauren kennedy"
+format:
+  revealjs: 
+    theme: dark
+    margin: .05
+editor: visual
+---
+
+## What is a multilevel model?
+
+-   Multilevel modelling seems to be one of the bigger crazes around in statistics at the moment (although that might just be my circles)
+
+-   They've been around for a while - typically they were used to model data with multiple observations per person. For example if we were modelling the relationship between test scores and hours spent studying, but we had multiple observations from the same student in our data, we would use a random effect for the student.
+
+$$\texttt{test_score} = \beta_0 + x_{\texttt{hours}}\beta_1 + \alpha_i + \epsilon$$
+
+## What is a multilevel model?
+
+-   We would then specify that the effect for student is drawn from a normal distribution with mean $0$ and variance $\sigma_{st}$
+
+$$\alpha_i \sim N(0,\sigma_{st}^2)$$
+
+-   In R we specify a formula using `lme4` notation, which looks like this
+
+```{r, eval = FALSE, echo = TRUE}
+
+test_score ~ hours + (1|student)
+```
+
+## lme4 notation
+
+![](images/paste-C04D34B2.png)
+
+From: https://cran.r-project.org/web/packages/lme4/vignettes/lmer.pdf
+
+## Why are multilevel models so useful for MRP?
+
+-   They allows us to take advantage of *partial pooling* - sharing some (but not all) information across different levels of a demographic group
+
+-   When we have sparse data (e.g., some levels with few observations) this means we can increase our certainty of each level, with a small increase in bias.
+
+-   Multilevel models are a special class of methods that induce regularization, which reduces the mean squared error of predictions by reducing the variance and allowing a small amount of bias.
+
+## Partial pooling
+
+-   Partial pooling is a balance between no pooling and complete pooling
+
+-   With no pooling, the estimate for each group is independent of every other group. It would be alike a regression with indicator variables for each level
+
+$$y \sim \beta_1D_1 + \beta_2D_2 + \beta_3D_3 + ... + \beta_jD_j + \epsilon$$
+
+## Complete pooling
+
+-   With complete pooling, the estimate for each group is the same as every other group. It would be like fitting a regression model with an intercept only
+
+$$y \sim \beta_0 + \epsilon$$ 
+
+
+- Partial pooling is a compromise that allows some information to be shared (through the variance of the groups) but each group still has it's own estimate

@@ -1,0 +1,147 @@
+---
+title: "Part 1"
+author: "Lauren Kennedy"
+date: '2023-01-15'
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+# Running a simple brms model
+
+First we will simulate a simple dataset to understand prior predictive checks. 
+
+We create this dataset as a simple intercept only model. This is a small modification on a linear regression to use a logistic link. This allows us to model probability on a (0,1) scale. 
+
+$$ p(y=1) = logit^{-1}(\beta_0)$$
+
+Create the data:
+
+```{r}
+library(tidyverse)
+set.seed(18383)
+
+ex_data1 <- data.frame(p_y = rep(.2, 100))%>%
+  mutate(y_obs = rbinom(100,1,p_y))
+
+```
+
+This following chunk runs this code with rstan (the default backend for brms). Do not install rstan for the purposes of running this chunk! It is included to demonstrate the speed differences (about half of the time) of cmdstanr. You can skip it by writing "eval = FALSE" in the curly braces at the top of the chunk. 
+
+```{r,cache=TRUE}
+# Do not run without rstan installed (don't run for this one chunk)
+library(brms)
+library(tictoc)
+tic()
+ex_mod1 <- brm(y_obs ~ 1, data = ex_data1, family = binomial(link = "logit"))
+toc()               
+```
+You can skip the speed timing and follow by just running the code. It takes about half as long though! :)
+
+```{r}
+library(tictoc)
+library(brms)
+tic()
+ex_mod1 <- brm(y_obs ~ 1, data = ex_data1, family = binomial(link = "logit"), backend = "cmdstanr")
+toc()   
+```
+
+Let's see what the object returns
+
+```{r}
+ex_mod1
+```
+Let's run the same code a little more efficiently by sampling each chain in parallel rather than serially. It doesn't make a dramatic differences in this instance because sampling is a much smaller proportion of time than compiling. However, in more complex models with more data, the opposite is true and this can make a big difference. 
+
+```{r}
+tic()
+ex_mod1 <- brm(y_obs ~ 1, data = ex_data1, family = binomial(link = "logit"), backend = "cmdstanr", cores = 4)
+toc()   
+```
+Using the posterior packages to extract the output. This can be used to create other posterior summaries. 
+
+```{r}
+library(posterior)
+ex1_draws <- as_draws_df(ex_mod1)
+```
+
+
+Want to modify your model but can't in brms syntax?
+
+```{r}
+stancode(ex_mod1)
+```
+
+# How to do a prior predictive check and work with priors in brms
+
+See a summary of the priors from an existing model
+
+```{r}
+prior_summary(ex_mod1)
+```
+Sample from the prior only
+
+```{r}
+ex_prior1 <- brm(y_obs ~ 1, data = ex_data1, family = binomial(link = "logit"), backend = "cmdstanr", cores = 4, sample_prior = "only")
+```
+Use this to predict the probability:
+
+```{r}
+ex1_prior_linpred <- posterior_linpred(ex_prior1)
+dim(ex1_prior_linpred)
+```
+
+```{r}
+ex1_prior_linpred[1:10,1:10]
+```
+Transform to probabilities
+
+```{r}
+ex1_prior_linpred <- posterior_linpred(ex_prior1, transform = TRUE)
+ex1_prior_linpred[1:10,1:10]
+```
+For comparison:
+
+```{r}
+ex1_prior_epred <- posterior_epred(ex_prior1)
+ex1_prior_epred[1:10,1:10]
+```
+For comparison:
+
+```{r}
+ex1_prior_predict <- posterior_predict(ex_prior1)
+ex1_prior_predict[1:10,1:10]
+```
+
+Visualising the prior for one observation in terms of the expected probability:
+
+```{r}
+hist(ex1_prior_linpred[,1])
+```
+
+# Changing the prior
+
+```{r}
+get_prior(y_obs ~ 1, data = ex_data1, family = binomial(link = "logit"))
+```
+
+```{r}
+prior_ex1 <- prior(normal(0,1), class= Intercept)
+prior_ex1
+```
+
+
+```{r}
+make_stancode(y_obs ~ 1, data = ex_data1, family = binomial(link = "logit"), prior = prior_ex1)
+```
+```{r}
+ex_prior1_v2 <- brm(y_obs ~ 1, data = ex_data1, family = binomial(link = "logit"), backend = "cmdstanr", cores = 4, sample_prior = "only", prior = prior_ex1)
+
+```
+```{r}
+ex1_prior2_linpred <- posterior_linpred(ex_prior1_v2, transform = TRUE)
+hist(ex1_prior2_linpred[,1])
+```
+

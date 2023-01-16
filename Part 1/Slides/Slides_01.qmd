@@ -1,0 +1,165 @@
+---
+title: "Part 1: Stan in R, Bayesian workflow"
+author: "Lauren kennedy"
+format:
+  revealjs: 
+    theme: dark
+    margin: .05
+    incremental: true   
+editor: visual
+---
+
+# Welcome!
+
+## A bit about me:
+
+-   PhD in psychology at the University of Adelaide
+-   Postdoc at Columbia University, supervised by Andrew Gelman. Worked on the NYC Poverty Tracker and Fragile Families surveys
+-   Lecturer in Business Analytics at Monash University, research in survey adjustment and Bayesian models applied to the social sciences
+-   (Coming Soon in April!) lecturer at Adelaide University in the Maths School
+
+## Acessing materials
+
+-   Materials are available on Github [here](https://github.com/lauken13/Wombat_Workshop_Bayes)
+
+-   To obtain your own copy (recommended!), use Github desktop and click the top left box
+
+    ![](images/paste-B45E1EC4.png)
+
+-   Select add and then clone repository
+
+    ![](images/paste-5AC56111.png)
+
+## Acessing materials
+
+-   Select url and copy the link here, then select where you would like the materials to exist on your computer (local path)
+
+    ![](images/paste-A5CFB4B8.png)
+
+## Structure for the workshop
+
+-   Broken into three parts of approximately 50 minutes (5-10 minute break each hour)
+
+-   Part 1: Introduction to Stan and the many R interfaces. Run a simple model, use prior predictive checks to understand what the impact of the priors
+
+-   Part 2: Common computational diagnostics, shiny stan and posterior predictive checks
+
+-   Part 3: Building up to a multilevel model.
+
+## Structure for the workshop
+
+-   In each part, we will start with a mix of slides and Rmd files with simulated data to illustrate key ideas.
+
+-   You will also have a larger dataset to apply with in part 3.
+
+# Using Stan from R
+
+## What is Stan?
+
+Stan is a state-of-the-art platform for statistical modeling and high-performance statistical computation. ...
+
+Users specify log density functions in Stan's probabilistic programming language and get:
+
+-   full Bayesian statistical inference with MCMC sampling (NUTS, HMC)
+
+-   approximate Bayesian inference with variational inference (ADVI)
+
+-   penalized maximum likelihood estimation with optimization (L-BFGS)
+
+::: footer
+Taken from https://mc-stan.org/
+:::
+
+## Bayesian inference in R using Stan
+
+-   Multiple packages in R that use Stan.
+-   These include:
+    -   rstanarm
+    -   brms
+    -   cmdstanr
+    -   rstan
+    -   plus many others that run bespoke models or use aspects of the above!
+
+## How do I choose which to use?
+
+First aspect: packages that take a formula, data and other input, and formulate in a way to run Stan.
+
+## rstanarm:
+
+-   Precompiled models (lower barrier to entry).
+-   Limited set of models
+-   Limited flexibility in priors, but priors designed to be generally acceptable
+-   Good for getting started, teaching etc.
+-   wraps rstan
+
+## brms
+
+-   Writes Stan code for you
+-   Very very broad set of models
+-   Wide range of priors, can also output Stan code for basic models and modify
+-   Good for research and teaching (my tool of choice!)
+-   Lower probability of errors in Stan code for common models
+-   Can wrap either rstan and cmdstanr
+
+## How do I choose which to use?
+
+Second aspect: choosing how to interact with Stan from R
+
+## rstan
+
+-   In-memory interface to Stan (calls C++ code from R)
+-   Slower development (currently Stan 2.26)
+-   GPL-3 license
+-   Allows you to distribute R packages with pre-compied Stan programs on Cran
+-   Some additional functionality
+
+## cmdstanr
+
+-   Calls CmdStan from R, which then compiles, run algorithms, writes results to files.
+-   Access to most recent versions of Stan (much faster now!)
+-   Fewer installation issues
+-   Potentially lower chance of crashing R
+-   Potentially lower memory overhead
+-   BSD-3 license (more permissive)
+
+# Bayesian workflow
+
+## The full workflow
+
+![](images/paste-58A05262.png)
+
+::: footer
+Taken from https://arxiv.org/pdf/2011.01808.pdf
+:::
+
+## Understanding priors with prior predictive checks
+
+Priors can mean different things to different people:
+
+-   Chosen for mathematical properties
+-   Reflect expert experience (see expert elicitation literature)
+-   Want to choose "uninformative priors"
+-   Want to use priors to impose regularisation
+
+## Understanding priors with prior predictive checks
+
+It's hard to think of priors (especially complex priors) on their own, prior predictive checks help us to understand in the context of the outcome. This is NOT about changing the priors so the intended outcome "matches" our observed data, but rather our previous experience of realistic values and effects.
+
+## An example
+
+![](images/paste-40D914C3.png)
+::: footer
+Taken from https://arxiv.org/pdf/1709.01449.pdf
+:::
+
+# The method
+
+For each observation in your dataset, predict the outcome using samples from the prior and not the posterior. 
+
+## Three different prediction functions
+
+- posterior_linpred: constructs posterior draws of the linear predictor 
+
+- posterior_epred: constructs posterior draws of the expected value of the posterior predictive distribution (lower variance than posterior_epred)
+
+- posterior_predict: posterior draws of the posterior predictive distribution (higher variance than posterior_epred)

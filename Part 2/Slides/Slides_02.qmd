@@ -1,0 +1,107 @@
+---
+title: "Part 2: Diagonostics, ShinyStan and prior predictive checks"
+author: "Lauren kennedy"
+format:
+  revealjs: 
+    theme: dark
+    margin: .05
+    incremental: true
+editor: visual
+---
+
+# Diagnostics
+
+## Diagnostics
+
+This is a light overview of diagnostics, for more resources on this, please see:
+
+-   https://mc-stan.org/bayesplot/articles/visual-mcmc-diagnostics.html
+
+-   https://betanalpha.github.io/assets/case_studies/rstan_workflow.html
+
+## The eight schools example
+
+-   The most common example for demonstrating diagnostic issues in Stan in the Eight schools data. A basic model is used for it that has known and well-understood sampling issues.
+
+-   We cannot replicate these issues in brms because brms codes the model in such a way to avoid them (I will discuss this a little more in part 3)
+
+## Sampling warning 1: Divergent transitions
+
+Looks like:
+
+![](images/paste-F0A05C7C.png)
+
+## Sampling warning 1: Divergent transitions
+
+Can I ignore it?
+
+-   1/2 can be a type 1 error (false positive). More than this can indicate sampling issues which means that your posterior might not be fully sampled.
+
+## Sampling warning 1: Divergent transitions
+
+What does it mean?
+
+-   We often use the framing of walking over a large hill. On steeper sections, you need to take smaller steps to avoid falling down the hill. However, if you took the same size step on a flat area, it would be very slow. The divergent transition is akin to "falling down the hill" - which means a part of the parameter space is harder to sample from.
+
+## Sampling warning 1 : Divergent transitions
+
+How do I fix it:
+
+(Conditional on working in brms)
+
+-   Check the model is appropriate for the data
+    -   Do the priors make sense or they very different from realistic values
+
+    -   Is the formula specified correctly (aka have you listed or not listed a variable twice?)
+
+    -   Is the model possible to identify given the data you have
+
+## Sampling warning 1 : Divergent transitions
+
+How do I fix it:
+
+-   Increase adapt_delta to be closer to 1 - (default is 0.8)
+
+    -   If a smaller step size reduces the problem, it is likely that you can sample from the posterior, but this will be slower.
+
+    -   If it does not, it is likely an issue with your model specification and/or data. Time to get some help! :)
+
+## Sampling warning 2: Treedepth
+
+HMC requires trajectories over your parameter space. Stan approximates these trajectories numerically using a fixed number of discrete values. When the spaces is very complex (or impossible), it will use more values. This is capped at 1024 (default for max tree depth = 10). You can increase this, it will become very slow. Generally these warnings indicate something else is going on with the model.
+
+::: footer
+There is a better and fuller discussion here: https://discourse.mc-stan.org/t/the-role-of-max-treedepth-in-no-u-turn/24155/3 
+:::
+
+## Sampling warning 3: Rhat
+
+-   Compares within vs between chains for parameters. If they do not agreee, Rhat is greater than 1 and indicates the chains have not mixed well.
+
+-   To identify this, please use 4 chains.
+
+-   The standard cut-off is 1.01 for finalised results.
+
+-   What to do if you get an Rhat warning? Generally it means something has been poorly specified or there's an issue with the model.
+
+::: footer
+See here for more discussion https://mc-stan.org/misc/warnings.html#r-hat 
+:::
+
+## Sampling warning 4: Effective sample size
+
+-   Effective sample size is an estimate of the number of independent draws your posterior is equivalent to.
+
+-   In Stan there are two warnings based on the ESS:
+
+    -   Bulk-ESS: sampling efficiency for location summaries (>400 suggested if using 4 chains)
+    -   Tail-ESS: sampling eddiciency of 5% and 95% quantiles
+
+::: footer
+See here for more explanation https://mc-stan.org/misc/warnings.html#bulk-and-tail-ess
+::: 
+
+# ShinyStan
+
+
+# Posterior Predictive Checks
